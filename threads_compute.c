@@ -25,70 +25,65 @@
  */
 
 typedef struct {
-    unsigned long *nums;
-    int            start;   // start index of this thread's slice
-    int            end;     // end index of this thread's slice
-    ulfunc_t       f;       // function to apply
-    unsigned long *result;  // pointer to partials[i], thread writes here
+    int           *nums;
+    int            start;
+    int            end;
+    ulfunc_t       f;
+    unsigned long *result;
 } thread_arg_t;
 
-// Thread worker function
 static void *thread_worker(void *arg) {
     thread_arg_t *a = (thread_arg_t *)arg;
-    unsigned long partial = a->nums[a->start]; // initialize with first element
+    unsigned long partial = (unsigned long)a->nums[a->start];
     for (int k = a->start + 1; k <= a->end; k++)
-        partial = a->f(partial, a->nums[k]);  // apply f over the slice
-    *(a->result) = partial;                    // store partial result
-    return NULL;                               // thread exits
+        partial = a->f((int)partial, a->nums[k]);  // f takes int, int
+    *(a->result) = partial;
+    return NULL;
 }
 
 unsigned long threads_compute(const char *filepath, int n_threads, ulfunc_t f) {
     int count = 0;
-    unsigned long *nums = read_numbers_ul(filepath, &count); // read numbers from file
+    int *nums = read_numbers(filepath, &count);  // int* now
     if (!nums || count == 0) {
-        free(nums); // nothing to compute
+        free(nums);
         return 0;
     }
 
-    if (n_threads > count) n_threads = count; // don't create more threads than numbers
+    if (n_threads > count) n_threads = count;
 
-    // Allocate shared structures
-    unsigned long *partials = malloc(n_threads * sizeof(unsigned long)); // store each thread's result
-    thread_arg_t  *args     = malloc(n_threads * sizeof(thread_arg_t));   // args for each thread
-    pthread_t     *tids     = malloc(n_threads * sizeof(pthread_t));     // thread IDs
+    unsigned long *partials = malloc(n_threads * sizeof(unsigned long));
+    thread_arg_t  *args     = malloc(n_threads * sizeof(thread_arg_t));
+    pthread_t     *tids     = malloc(n_threads * sizeof(pthread_t));
     if (!partials || !args || !tids) {
         free(nums); free(partials); free(args); free(tids);
-        return 0; // allocation failed
+        return 0;
     }
 
-    int chunk     = count / n_threads; // base number of elements per thread
-    int remainder = count % n_threads; // extra elements for the last thread
+    int chunk     = count / n_threads;
+    int remainder = count % n_threads;
 
     for (int i = 0; i < n_threads; i++) {
-        args[i].nums   = nums;                // shared numbers array
-        args[i].start  = i * chunk;           // start index for this thread
-        args[i].end    = args[i].start + chunk - 1; // end index for this thread
-        args[i].f      = f;                   // function to apply
-        args[i].result = &partials[i];        // store result in partials[i]
-        if (i == n_threads - 1) args[i].end += remainder; // last thread takes remainder
+        args[i].nums   = nums;
+        args[i].start  = i * chunk;
+        args[i].end    = args[i].start + chunk - 1;
+        args[i].f      = f;
+        args[i].result = &partials[i];
+        if (i == n_threads - 1) args[i].end += remainder;
 
         if (pthread_create(&tids[i], NULL, thread_worker, &args[i]) != 0) {
-            perror("pthread_create");         // thread creation failed
+            perror("pthread_create");
             free(nums); free(partials); free(args); free(tids);
             return 0;
         }
     }
 
-    // Wait for all threads to finish
     for (int i = 0; i < n_threads; i++)
         pthread_join(tids[i], NULL);
 
-    // Aggregate partial results
     unsigned long result = partials[0];
     for (int i = 1; i < n_threads; i++)
-        result = f(result, partials[i]); // combine all thread results
+        result = f((int)result, (int)partials[i]);  // f takes int, int
 
-    // Cleanup
     free(nums); free(partials); free(args); free(tids);
-    return result; // return final aggregated result
+    return result;
 }

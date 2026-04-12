@@ -7,12 +7,18 @@
 #include <ctype.h>
 
 /*
- * Reads all integers (including negatives) from a file into an int array.
- * Used by sequential_compute and parallel_compute.
+ * Reads all integers from a file into a dynamically allocated array.
+ * Numbers can be separated by newlines OR commas (as the doctor specified).
+ * Sets *count to the number of integers read.
+ * Caller is responsible for free()-ing the returned array.
+ * Returns NULL on failure.
  */
 static int *read_numbers(const char *filepath, int *count) {
     FILE *fp = fopen(filepath, "r");
-    if (!fp) { perror("fopen"); return NULL; }
+    if (!fp) {
+        perror("fopen");
+        return NULL;
+    }
 
     int capacity = 64;
     int *nums = malloc(capacity * sizeof(int));
@@ -21,9 +27,11 @@ static int *read_numbers(const char *filepath, int *count) {
     *count = 0;
     char buf[256];
 
+    // Read the whole file as text, tokenize on comma, newline, space
     while (fgets(buf, sizeof(buf), fp)) {
         char *tok = strtok(buf, ",\n\r ");
         while (tok) {
+            // Skip empty tokens
             int valid = 0;
             for (int i = 0; tok[i]; i++)
                 if (isdigit(tok[i]) || tok[i] == '-') { valid = 1; break; }
@@ -36,59 +44,6 @@ static int *read_numbers(const char *filepath, int *count) {
                     nums = tmp;
                 }
                 nums[(*count)++] = atoi(tok);
-            }
-            tok = strtok(NULL, ",\n\r ");
-        }
-    }
-
-    fclose(fp);
-    return nums;
-}
-
-/*
- * Reads non-negative numbers from a file into an unsigned long array.
- * Used by mmap_compute and threads_compute.
- *
- * unsigned long cannot represent negative numbers.
- * Negative values in the file are skipped with a warning printed to stderr.
- * This is correct behavior — mmap_compute and threads_compute are defined
- * to return unsigned long, so the input domain must be non-negative.
- */
-static unsigned long *read_numbers_ul(const char *filepath, int *count) {
-    FILE *fp = fopen(filepath, "r");
-    if (!fp) { perror("fopen"); return NULL; }
-
-    int capacity = 64;
-    unsigned long *nums = malloc(capacity * sizeof(unsigned long));
-    if (!nums) { fclose(fp); return NULL; }
-
-    *count = 0;
-    char buf[256];
-
-    while (fgets(buf, sizeof(buf), fp)) {
-        char *tok = strtok(buf, ",\n\r ");
-        while (tok) {
-            // Negative numbers cannot be stored as unsigned long — skip and warn
-            if (tok[0] == '-') {
-                fprintf(stderr,
-                    "Warning: negative number '%s' skipped "
-                    "(mmap/threads_compute requires unsigned values)\n", tok);
-                tok = strtok(NULL, ",\n\r ");
-                continue;
-            }
-
-            int valid = 0;
-            for (int i = 0; tok[i]; i++)
-                if (isdigit(tok[i])) { valid = 1; break; }
-
-            if (valid) {
-                if (*count == capacity) {
-                    capacity *= 2;
-                    unsigned long *tmp = realloc(nums, capacity * sizeof(unsigned long));
-                    if (!tmp) { free(nums); fclose(fp); return NULL; }
-                    nums = tmp;
-                }
-                nums[(*count)++] = strtoul(tok, NULL, 10);
             }
             tok = strtok(NULL, ",\n\r ");
         }

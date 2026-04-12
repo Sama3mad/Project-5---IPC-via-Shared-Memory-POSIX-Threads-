@@ -28,10 +28,10 @@
  *   5. Parent reads all partial results from res_pipes.
  *   6. Parent applies f on the partial results to get the final answer.
  */
-int parallel_compute(const char *filepath, int n_proc, ulfunc_t f) {
+int parallel_compute(const char *filepath, int n_proc, func_t f) {
     // --- Step 1: read all numbers ---
     int count = 0;
-    unsigned long *nums = read_numbers_ul(filepath, &count);
+    int *nums = read_numbers(filepath, &count);
     if (!nums || count == 0) {
         free(nums);
         return 0;
@@ -92,13 +92,13 @@ int parallel_compute(const char *filepath, int n_proc, ulfunc_t f) {
             close(ctrl_pipe[i][0]);
 
             // Apply f on nums[start..end] left-to-right
-            unsigned long partial = nums[start];
+            int partial = nums[start];
             for (int k = start + 1; k <= end; k++) {
                 partial = f(partial, nums[k]);
             }
 
             // Send partial result back to parent
-            write(res_pipe[i][1], &partial, sizeof(unsigned long));
+            write(res_pipe[i][1], &partial, sizeof(int));
             close(res_pipe[i][1]);
 
             free(nums);
@@ -135,14 +135,14 @@ int parallel_compute(const char *filepath, int n_proc, ulfunc_t f) {
     }
 
     // Collect partial results and aggregate with f
-    unsigned long *partials = malloc(n_proc * sizeof(unsigned long));
+    int *partials = malloc(n_proc * sizeof(int));
     for (int i = 0; i < n_proc; i++) {
-        read(res_pipe[i][0], &partials[i], sizeof(unsigned long));
+        read(res_pipe[i][0], &partials[i], sizeof(int));
         close(res_pipe[i][0]);
     }
 
     // Aggregate: apply f on all partial results left-to-right
-    unsigned long result = partials[0];
+    int result = partials[0];
     for (int i = 1; i < n_proc; i++) {
         result = f(result, partials[i]);
     }
