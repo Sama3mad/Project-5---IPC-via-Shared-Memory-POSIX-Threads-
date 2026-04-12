@@ -14,16 +14,16 @@
  *
  * Returns the final result, or 0 if the file has fewer than 1 number.
  */
-int sequential_compute(const char *filepath, func_t f) {
+int sequential_compute(const char *filepath, ulfunc_t f) {
     int count = 0;
-    int *nums = read_numbers(filepath, &count);
+    unsigned long *nums = read_numbers_ul(filepath, &count);
     if (!nums || count == 0) {
         free(nums);
         return 0;
     }
 
     // Start with the first number, fold left through the rest
-    int result = nums[0];
+    unsigned long result = nums[0];
     for (int i = 1; i < count; i++) {
         result = f(result, nums[i]);
     }
