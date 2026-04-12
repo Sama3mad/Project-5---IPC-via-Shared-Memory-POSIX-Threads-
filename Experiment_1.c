@@ -7,9 +7,9 @@
 #define REPEATS 7            // for smoothing
 
 // Function pointer
-//int fun(int a, int b) { return a * b; }
+int fun(int a, int b) { return a * b; }
 
-unsigned long ul_fun(unsigned long a, unsigned long b) { return a * b; }
+unsigned long ul_fun(int a, int b) { return a * b; }
 
 
 
@@ -71,13 +71,13 @@ void experiment_fixed_nproc(int n_proc) {
 
             // Sequential timing
             start = get_time();
-            sequential_compute(filename, ul_fun);
+            sequential_compute(filename, fun);
             end = get_time();
             seq_times[r] = (end - start);
 
             // Pipes timing
             start = get_time();
-            parallel_compute(filename, n_proc, ul_fun);
+            parallel_compute(filename, n_proc, fun);
             end = get_time();
             par_times[r] = (end - start);
 

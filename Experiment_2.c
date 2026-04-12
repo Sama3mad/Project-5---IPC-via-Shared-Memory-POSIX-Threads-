@@ -6,9 +6,9 @@
 
 #define REPEATS 23   // odd
 
-//int fun(int a, int b) { return a * b; }
+int fun(int a, int b) { return a * b; }
 
-unsigned long ul_fun(unsigned long a, unsigned long b) { return a * b; }
+unsigned long ul_fun(int a, int b) { return a * b; }
 
 //int sequential_compute(const char *filename, int (*f)(int, int));
 //int parallel_compute(const char *filename, int n_proc, int (*f)(int, int));
@@ -61,13 +61,13 @@ void experiment_fixed_N() {
 
             // Pipes
             start = get_time();
-            parallel_compute(filename, n_proc, ul_fun);
+            parallel_compute(filename, n_proc, fun);
             end = get_time();
             par_times[r] = end - start;
 
             // Sequential
             start = get_time();
-            sequential_compute(filename, ul_fun);
+            sequential_compute(filename, fun);
             end = get_time();
             seq_times[r] = end - start;
 
