@@ -7,6 +7,7 @@
 #include <ctype.h>
 
 /*
+ * unchanged from last project
  * Reads all integers from a file into a dynamically allocated array.
  * Numbers can be separated by newlines OR commas (as the doctor specified).
  * Sets *count to the number of integers read.
